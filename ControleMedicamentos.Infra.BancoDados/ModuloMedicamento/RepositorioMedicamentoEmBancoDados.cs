@@ -17,6 +17,7 @@ namespace ControleMedicamento.Infra.BancoDados.ModuloMedicamento
 
         List<Medicamento> medicamentos = new();
 
+
         public ValidationResult Inserir(Medicamento entidade)
         {
             ValidationResult resultado = Validar(entidade);
@@ -160,8 +161,8 @@ namespace ControleMedicamento.Infra.BancoDados.ModuloMedicamento
             DesconectarBancoDados();
         }
 
-
         #region metodos protected
+
         protected override void DefinirParametros(Medicamento entidade, SqlCommand cmd)
         {
             cmd.Parameters.AddWithValue("NOME", entidade.Nome);
@@ -329,6 +330,17 @@ namespace ControleMedicamento.Infra.BancoDados.ModuloMedicamento
         {
             return new ValidadorMedicamento().Validate(entidade);
         }
+
+        protected override bool VerificarDuplicidade(string novoTexto)
+        {
+            var todos = SelecionarTodos();
+
+            if (todos.Count != 0)
+                return todos.Exists(x => x.Equals(novoTexto));
+
+            return false;
+        }
+
         #endregion
 
         #region metodos privados

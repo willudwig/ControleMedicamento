@@ -38,6 +38,7 @@ namespace ControleMedicamentos.Infra.BancoDados.Compartilhado
         protected abstract ValidationResult Validar(T entidade);
         protected abstract List<T> LerTodos(SqlDataReader leitor);
         protected abstract T LerUnico(SqlDataReader leitor);
+        protected abstract bool VerificarDuplicidade(string novoTexto);
 
         #endregion
 

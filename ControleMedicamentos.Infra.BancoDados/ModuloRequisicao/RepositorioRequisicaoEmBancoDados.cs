@@ -311,6 +311,16 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloRequisicao
             return new ValidadorRequisicao().Validate(entidade);
         }
 
+        protected override bool VerificarDuplicidade(string novoTexto)
+        {
+            var todos = SelecionarTodos();
+
+            if (todos.Count != 0)
+                return todos.Exists(x => x.Equals(novoTexto));
+
+            return false;
+        }
+
         #endregion
 
         #region metodos privados

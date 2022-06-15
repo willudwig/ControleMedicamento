@@ -94,6 +94,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloFuncionario
 
 
         #region metodos protected
+
         protected override void DefinirParametros(Funcionario entidade, SqlCommand cmd)
         {
             cmd.Parameters.AddWithValue("NOME", entidade.Nome);
@@ -219,6 +220,16 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloFuncionario
         protected override ValidationResult Validar(Funcionario entidade)
         {
             return new ValidadorFuncionario().Validate(entidade);
+        }
+
+        protected override bool VerificarDuplicidade(string novoTexto)
+        {
+            var todos = SelecionarTodos();
+
+            if (todos.Count != 0)
+                return todos.Exists(x => x.Equals(novoTexto));
+
+            return false;
         }
 
         #endregion

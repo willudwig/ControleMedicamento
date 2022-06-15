@@ -91,6 +91,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloPaciente
         }
 
         #region metodos protected
+
         protected override void DefinirParametros(Paciente entidade, SqlCommand cmd)
         {
             cmd.Parameters.AddWithValue("NOME", entidade.Nome);
@@ -210,6 +211,16 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloPaciente
             return new ValidadorPaciente().Validate(entidade);
         }
 
-       #endregion
+        protected override bool VerificarDuplicidade(string novoTexto)
+        {
+            var todos = SelecionarTodos();
+
+            if(todos.Count != 0)
+                return todos.Exists(x => x.Equals(novoTexto));
+
+            return false;
+        }
+
+        #endregion
     }
 }

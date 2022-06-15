@@ -146,6 +146,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloFornecedor
 
             DesconectarBancoDados();
         }
+
         protected override void ExcluirRegistroBancoDados(Fornecedor entidade)
         {
             ConectarBancoDados();
@@ -160,6 +161,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloFornecedor
 
             DesconectarBancoDados();
         }
+
         protected override void DefinirParametros(Fornecedor entidade, SqlCommand cmd)
         {
             cmd.Parameters.AddWithValue("NOME", entidade.Nome);
@@ -168,6 +170,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloFornecedor
             cmd.Parameters.AddWithValue("EMAIL", entidade.Email);
             cmd.Parameters.AddWithValue("TELEFONE", entidade.Telefone);
         }
+
         protected override void DefinirParametros(Fornecedor entidade, SqlCommand cmd, int entidadeId)
         {
             cmd.Parameters.AddWithValue("NOME", entidade.Nome);
@@ -177,10 +180,12 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloFornecedor
             cmd.Parameters.AddWithValue("TELEFONE", entidade.Telefone);
             cmd.Parameters.AddWithValue("ID", entidadeId);
         }
+
         protected override ValidationResult Validar(Fornecedor entidade)
         {
             return new ValidadorFornecedor().Validate(entidade);
         }
+
         protected override List<Fornecedor> LerTodos(SqlDataReader leitor)
         {
             List<Fornecedor> fornecedores = new();
@@ -204,6 +209,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloFornecedor
 
             return fornecedores;
         }
+
         protected override Fornecedor LerUnico(SqlDataReader leitor)
         {
            Fornecedor fornecedor = null;
@@ -224,6 +230,16 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloFornecedor
             }
 
             return fornecedor;
+        }
+
+        protected override bool VerificarDuplicidade(string novoTexto)
+        {
+            var todos = SelecionarTodos();
+
+            if (todos.Count != 0)
+                return todos.Exists(x => x.Equals(novoTexto));
+
+            return false;
         }
 
         #endregion
