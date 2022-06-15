@@ -26,8 +26,10 @@ namespace ControleMedicamentos.Infra.BancoDados.Compartilhado
             conexao.Close();
         }
 
+
         #region metodos abstratos
 
+        public abstract void Formatar();
         protected abstract void InserirRegistroBancoDados(T entidade);
         protected abstract void EditarRegistroBancoDados(T entidade);
         protected abstract void ExcluirRegistroBancoDados(T entidade);

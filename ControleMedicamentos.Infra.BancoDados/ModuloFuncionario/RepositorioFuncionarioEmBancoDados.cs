@@ -1,5 +1,6 @@
 ﻿
 
+using ControleMedicamentos.Dominio.Compartilhado;
 using ControleMedicamentos.Dominio.ModuloFuncionario;
 using ControleMedicamentos.Infra.BancoDados.Compartilhado;
 using FluentValidation.Results;
@@ -77,18 +78,32 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloFuncionario
             return selecionado;
         }
 
+        public override void Formatar()
+        {
+            ConectarBancoDados();
+
+            sql = @"DELETE FROM TBFUNCIONARIO;
+                    DBCC CHECKIDENT (TBFUNCIONARIO, RESEED, 0);";
+
+            SqlCommand cmd_Formatacao = new(sql, conexao);
+
+            cmd_Formatacao.ExecuteNonQuery();
+
+            DesconectarBancoDados();
+        }
+
 
         #region metodos protected
         protected override void DefinirParametros(Funcionario entidade, SqlCommand cmd)
         {
-            cmd.Parameters.AddWithValue("NOME_FUNCIONARIO", entidade.Nome);
+            cmd.Parameters.AddWithValue("NOME", entidade.Nome);
             cmd.Parameters.AddWithValue("LOGIN", entidade.Login);
             cmd.Parameters.AddWithValue("SENHA", entidade.Senha);
         }
 
         protected override void DefinirParametros(Funcionario entidade, SqlCommand cmd, int entidadeId)
         {
-            cmd.Parameters.AddWithValue("NOME_FUNCIONARIO", entidade.Nome);
+            cmd.Parameters.AddWithValue("NOME", entidade.Nome);
             cmd.Parameters.AddWithValue("LOGIN", entidade.Login);
             cmd.Parameters.AddWithValue("SENHA", entidade.Senha);
             cmd.Parameters.AddWithValue("ID", entidade.Id);
@@ -143,7 +158,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloFuncionario
                            )
                            VALUES
                            (
-                                @NOME_FUNCIONARIO,
+                                @NOME,
                                 @LOGIN,
                                 @SENHA
                            )";
@@ -152,7 +167,9 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloFuncionario
 
             DefinirParametros(entidade, cmd_Insercao);
 
-            entidade.Id = Convert.ToInt32(cmd_Insercao.ExecuteScalar());
+            cmd_Insercao.ExecuteNonQuery();
+
+            //entidade.Id = Convert.ToInt32(cmd_Insercao.ExecuteScalar());
 
             DesconectarBancoDados();
         }
@@ -164,7 +181,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloFuncionario
             while (leitor.Read())
             {
                 int id = Convert.ToInt32(leitor["ID"]);
-                string nome = leitor["NOME_FUNCIONARIO"].ToString();
+                string nome = leitor["NOME"].ToString();
                 string login = leitor["LOGIN"].ToString();
                 string senha = leitor["SENHA"].ToString();
 
@@ -186,7 +203,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloFuncionario
             if (leitor.Read())
             {
                 int id = Convert.ToInt32(leitor["ID"]);
-                string nome = leitor["NOME_FUNCIONARIO"].ToString();
+                string nome = leitor["NOME"].ToString();
                 string login = leitor["LOGIN"].ToString();
                 string senha = leitor["SENHA"].ToString();
 
@@ -203,6 +220,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloFuncionario
         {
             return new ValidadorFuncionario().Validate(entidade);
         }
+
         #endregion
     }
 }

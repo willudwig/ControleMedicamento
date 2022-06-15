@@ -1,4 +1,5 @@
-﻿using ControleMedicamentos.Dominio.ModuloPaciente;
+﻿using ControleMedicamentos.Dominio.Compartilhado;
+using ControleMedicamentos.Dominio.ModuloPaciente;
 using ControleMedicamentos.Infra.BancoDados.Compartilhado;
 using FluentValidation.Results;
 using System;
@@ -75,16 +76,30 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloPaciente
             return selecionado;
         }
 
+        public override void Formatar()
+        {
+            ConectarBancoDados();
+
+            sql = @"DELETE FROM TBPACIENTE;
+                    DBCC CHECKIDENT (TBPACIENTE, RESEED, 0);";
+
+            SqlCommand cmd_Formatacao = new(sql, conexao);
+
+            cmd_Formatacao.ExecuteNonQuery();
+
+            DesconectarBancoDados();
+        }
+
         #region metodos protected
         protected override void DefinirParametros(Paciente entidade, SqlCommand cmd)
         {
-            cmd.Parameters.AddWithValue("NOME_PACIENTE", entidade.Nome);
+            cmd.Parameters.AddWithValue("NOME", entidade.Nome);
             cmd.Parameters.AddWithValue("CARTAOSUS", entidade.CartaoSUS);
         }
 
         protected override void DefinirParametros(Paciente entidade, SqlCommand cmd, int entidadeId)
         {
-            cmd.Parameters.AddWithValue("NOME_PACIENTE", entidade.Nome);
+            cmd.Parameters.AddWithValue("NOME", entidade.Nome);
             cmd.Parameters.AddWithValue("CARTAOSUS", entidade.CartaoSUS);
             cmd.Parameters.AddWithValue("ID", entidade.Id);
         }
@@ -96,7 +111,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloPaciente
             sql = @"UPDATE [TBPACIENTE] SET 
 
                         [NOME] = @NOME,    
-	                    [CARTAOSUS] = @LOGIN
+	                    [CARTAOSUS] = @CARTAOSUS
 
                    WHERE
 		                 ID = @ID;";
@@ -136,7 +151,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloPaciente
                            )
                            VALUES
                            (
-                                @NOME_PACIENTE,
+                                @NOME,
                                 @CARTAOSUS
                            )";
 
@@ -144,7 +159,8 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloPaciente
 
             DefinirParametros(entidade, cmd_Insercao);
 
-            entidade.Id = Convert.ToInt32(cmd_Insercao.ExecuteScalar());
+            cmd_Insercao.ExecuteNonQuery();
+            //entidade.Id = Convert.ToInt32(cmd_Insercao.ExecuteScalar());
 
             DesconectarBancoDados();
         }
@@ -156,7 +172,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloPaciente
             while (leitor.Read())
             {
                 int id = Convert.ToInt32(leitor["ID"]);
-                string nome = leitor["NOME_PACIENTE"].ToString();
+                string nome = leitor["NOME"].ToString();
                 string cartaoSus = leitor["CARTAOSUS"].ToString();
 
                 Paciente paciente = new Paciente(nome, cartaoSus)
@@ -177,7 +193,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloPaciente
             if (leitor.Read())
             {
                 int id = Convert.ToInt32(leitor["ID"]);
-                string nome = leitor["NOME_PACIENTE"].ToString();
+                string nome = leitor["NOME"].ToString();
                 string cartaoSus = leitor["CARTAOSUS"].ToString();
 
                 paciente = new Paciente(nome, cartaoSus)
@@ -193,6 +209,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloPaciente
         {
             return new ValidadorPaciente().Validate(entidade);
         }
-        #endregion
+
+       #endregion
     }
 }

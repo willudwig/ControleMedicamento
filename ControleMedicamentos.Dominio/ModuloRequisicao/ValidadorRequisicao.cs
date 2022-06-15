@@ -7,9 +7,21 @@ namespace ControleMedicamentos.Dominio.ModuloRequisicao
     {
         public ValidadorRequisicao()
         {
-            RuleFor(x => x.Medicamento).NotNull().NotEmpty();
-            RuleFor(x => x.Paciente).NotNull().NotEmpty();
-            RuleFor(x => x.Funcionario).NotNull().NotEmpty();
+            RuleFor(x => x.Medicamento)
+                                .NotNull().WithMessage("'Medicamento' não pode ser nulo");
+
+            RuleFor(x => x.Paciente)
+                                .NotNull().WithMessage("'Paciente' não pode ser nulo");
+
+            RuleFor(x => x.Funcionario)
+                                .NotNull().WithMessage("'Funcionario' não pode ser nulo");
+
+            RuleFor(x => x.QtdMedicamento)
+                                .NotEmpty().WithMessage("'Quantidade Medicamento' não pode ser vazio");
+
+            RuleFor(x => x.Data)
+                                .GreaterThan(System.DateTime.MinValue).WithMessage("'Data' incorreto");
+            ;
         }
     }
 }

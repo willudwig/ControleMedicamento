@@ -1,6 +1,5 @@
 ﻿using ControleMedicamento.Infra.BancoDados.ModuloMedicamento;
-using ControleMedicamentos.Dominio.ModuloFuncionario;
-using ControleMedicamentos.Dominio.ModuloPaciente;
+using ControleMedicamentos.Dominio.Compartilhado;
 using ControleMedicamentos.Dominio.ModuloRequisicao;
 using ControleMedicamentos.Infra.BancoDados.Compartilhado;
 using ControleMedicamentos.Infra.BancoDados.ModuloFuncionario;
@@ -53,7 +52,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloRequisicao
             ConectarBancoDados();
 
             sql = @"SELECT  
-
+                        R.[ID],
                         R.[FUNCIONARIO_ID],
                         R.[PACIENTE_ID],
                         R.[MEDICAMENTO_ID],
@@ -62,9 +61,9 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloRequisicao
 
                     FROM TBREQUISICAO AS R
 
-                        INNER JOIN TBFUNCIOARIO  AS F ON R.FUNCIONARIO_ID = F.ID,
-                        INNER JOIN TBPACIENTE    AS P ON R.PACIENTE_ID    = P.ID,
-                        INNER JOIN TBMEDICAMENTO AS M ON R.MEDICAMENTO_ID = M.ID";
+                        INNER JOIN TBFUNCIONARIO  AS F ON R.FUNCIONARIO_ID = F.ID
+                        INNER JOIN TBPACIENTE    AS P ON R.PACIENTE_ID    = P.ID
+                        INNER JOIN TBMEDICAMENTO AS M ON R.MEDICAMENTO_ID = M.ID;";
 
             SqlCommand cmd_Selecao = new(sql, conexao);
 
@@ -83,8 +82,9 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloRequisicao
         {
             ConectarBancoDados();
 
-            sql = @"SELECT  
+            sql = @"SELECT
 
+                        R.[ID],
                         R.[FUNCIONARIO_ID],
                         R.[PACIENTE_ID],
                         R.[MEDICAMENTO_ID],
@@ -93,11 +93,11 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloRequisicao
 
                     FROM TBREQUISICAO AS R
 
-                        INNER JOIN TBFUNCIOARIO  AS F ON R.FUNCIONARIO_ID = F.ID,
-                        INNER JOIN TBPACIENTE    AS P ON R.PACIENTE_ID = P.ID,
+                        INNER JOIN TBFUNCIONARIO  AS F ON R.FUNCIONARIO_ID = F.ID
+                        INNER JOIN TBPACIENTE    AS P ON R.PACIENTE_ID = P.ID
                         INNER JOIN TBmEDICAMENTO AS M ON R.MEDICAMENTO_ID = M.ID
 
-                    WHERE ID = @ID";
+                    WHERE R.ID = @ID";
 
             SqlCommand cmdSelecao = new(sql, conexao);
 
@@ -109,12 +109,27 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloRequisicao
 
             DesconectarBancoDados();
 
-            Ler_Funcionario_Paciente_Medicamento(reqSelecionada.Funcionario.Id, reqSelecionada.Paciente.Id, reqSelecionada.Medicamento.Id, ref reqSelecionada); // requisicaoSelecionada
+            Ler_Funcionario_Paciente_Medicamento(reqSelecionada.Funcionario.Id, reqSelecionada.Paciente.Id, reqSelecionada.Medicamento.Id, ref reqSelecionada);
 
             return reqSelecionada;
         }
 
+        public override void Formatar()
+        {
+            ConectarBancoDados();
+
+            sql = @"DELETE FROM TBREQUISICAO;
+                    DBCC CHECKIDENT (TBREQUISICAO, RESEED, 0);";
+
+            SqlCommand cmd_Formatacao = new(sql, conexao);
+
+            cmd_Formatacao.ExecuteNonQuery();
+
+            DesconectarBancoDados();
+        }
+
         #region metodos protected
+
         protected override void DefinirParametros(Requisicao entidade, SqlCommand cmd)
         {
             cmd.Parameters.AddWithValue("FUNCIONARIO_ID", entidade.Funcionario.Id);
@@ -205,7 +220,8 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloRequisicao
 
             DefinirParametros(entidade, cmd_Insercao);
 
-            entidade.Id = Convert.ToInt32(cmd_Insercao.ExecuteScalar());
+            cmd_Insercao.ExecuteNonQuery();
+            //entidade.Id = Convert.ToInt32(cmd_Insercao.ExecuteScalar());
 
             DesconectarBancoDados();
         }
@@ -253,7 +269,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloRequisicao
 
         protected override Requisicao LerUnico(SqlDataReader leitor)
         {
-            Requisicao medicamento = null;
+            Requisicao requisicao = null;
 
             if (leitor.Read())
             {
@@ -264,7 +280,7 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloRequisicao
                 int quantidadeMedicamento = Convert.ToInt32(leitor["QUANTIDADEMEDICAMENTO"]);
                 DateTime data = Convert.ToDateTime(leitor["DATA"]);
 
-                Requisicao requisicao = new Requisicao()
+                requisicao = new Requisicao()
                 {
                     Id = id,
                     Data = data,
@@ -287,19 +303,23 @@ namespace ControleMedicamentos.Infra.BancoDados.ModuloRequisicao
                 };
             }
 
-            return medicamento;
+            return requisicao;
         }
 
         protected override ValidationResult Validar(Requisicao entidade)
         {
             return new ValidadorRequisicao().Validate(entidade);
         }
+
         #endregion
 
         #region metodos privados
+
         private void LerFuncionariosPacientesMedicamentos(List<Requisicao> requisicoes)
         {
             repoFuncionario = new();
+            repoPaciente = new();
+            repoMedicamento = new();
 
             foreach (Requisicao r in requisicoes)
             {

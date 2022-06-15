@@ -1,17 +1,21 @@
 ﻿using ControleMedicamentos.Dominio.ModuloFornecedor;
 using ControleMedicamentos.Dominio.ModuloMedicamento;
+using ControleMedicamentos.Dominio.ModuloRequisicao;
 using ControleMedicamentos.Infra.BancoDados.Compartilhado;
 using ControleMedicamentos.Infra.BancoDados.ModuloFornecedor;
 using FluentValidation.Results;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
+using System.Linq;
 
 namespace ControleMedicamento.Infra.BancoDados.ModuloMedicamento
 {
-    public class RepositorioMedicamentoEmBancoDados : ConexaoBancoDados<Medicamento>, IRepositorio<Medicamento>
+    public class RepositorioMedicamentoEmBancoDados : ConexaoBancoDados<Medicamento>, IRepositorioMedicamento
     {
         RepositorioFornecedorEmBancoDados repoFornecedor;
+
+        List<Medicamento> medicamentos = new();
 
         public ValidationResult Inserir(Medicamento entidade)
         {
@@ -55,7 +59,7 @@ namespace ControleMedicamento.Infra.BancoDados.ModuloMedicamento
                         M.[LOTE], 
                         M.[VALIDADE],
                         M.[QUANTIDADEDISPONIVEL],
-                        M.[FORNECEDOR_ID],
+                        M.[FORNECEDOR_ID]
 
                     FROM TBMEDICAMENTO AS M
                     INNER JOIN TBFORNECEDOR AS F
@@ -70,7 +74,8 @@ namespace ControleMedicamento.Infra.BancoDados.ModuloMedicamento
 
             DesconectarBancoDados();
 
-            LerFornecedores(medicamentos);
+            if (medicamentos != null)
+                LerFornecedores(medicamentos);
 
             return medicamentos;
         }
@@ -87,13 +92,14 @@ namespace ControleMedicamento.Infra.BancoDados.ModuloMedicamento
                         M.[LOTE], 
                         M.[VALIDADE],
                         M.[QUANTIDADEDISPONIVEL],
-                        M.[FORNECEDOR_ID],
+                        M.[FORNECEDOR_ID]
 
                     FROM TBMEDICAMENTO AS M
                     INNER JOIN TBFORNECEDOR AS F
 
                         ON M.FORNECEDOR_ID = F.ID
-                        WHERE ID = @ID";
+
+                        WHERE M.ID = @ID";
 
             SqlCommand cmdSelecao = new(sql, conexao);
 
@@ -105,29 +111,74 @@ namespace ControleMedicamento.Infra.BancoDados.ModuloMedicamento
 
             DesconectarBancoDados();
 
-            selecionado.Fornecedor = LerFornecedor(selecionado.Id);
+            if(selecionado != null)
+                selecionado.Fornecedor = LerFornecedor(selecionado.Fornecedor.Id);
 
             return selecionado;
         }
 
+        public List<Medicamento> ObterRemediosFalta()
+        {
+            List<Medicamento> medsFalta = SelecionarTodos();
+
+            return medsFalta.FindAll(x => x.QuantidadeDisponivel <= 1);
+        }
+
+        public List<Medicamento> ObterRemediosBaixaQtd()
+        {
+            List<Medicamento> medsBaixo = SelecionarTodos();
+
+            return medsBaixo.FindAll(x => x.QuantidadeDisponivel > 1 && x.QuantidadeDisponivel < 6);
+        }
+
+        public List<Medicamento> ObterRemediosMaisRequisitados(List<Medicamento> medics)
+        {
+            medicamentos = medics;
+
+            var rnd = new System.Random();
+
+            for (int i = 0; i < 11; i++)
+            {
+                var medSorteada = medics[rnd.Next(medics.Count)];
+                AdicionarRequisicao(medSorteada);
+            }
+
+            return medics.FindAll(x => x.QuantidadeRequisicoes > 1).OrderByDescending(x => x.Requisicoes.Count).ToList();
+        }
+
+        public override void Formatar()
+        {
+            ConectarBancoDados();
+
+            sql = @"DELETE FROM TBMEDICAMENTO;
+                    DBCC CHECKIDENT (TBMEDICAMENTO, RESEED, 0);";
+
+            SqlCommand cmd_Formatacao = new(sql, conexao);
+
+            cmd_Formatacao.ExecuteNonQuery();
+
+            DesconectarBancoDados();
+        }
+
+
         #region metodos protected
         protected override void DefinirParametros(Medicamento entidade, SqlCommand cmd)
         {
-            cmd.Parameters.AddWithValue("NOME_MEDICAMENTO", entidade.Nome);
+            cmd.Parameters.AddWithValue("NOME", entidade.Nome);
             cmd.Parameters.AddWithValue("DESCRICAO", entidade.Descricao);
             cmd.Parameters.AddWithValue("LOTE", entidade.Lote);
             cmd.Parameters.AddWithValue("VALIDADE", entidade.Validade);
-            cmd.Parameters.AddWithValue("QTD", entidade.QuantidadeDisponivel);
+            cmd.Parameters.AddWithValue("QUANTIDADEDISPONIVEL", entidade.QuantidadeDisponivel);
             cmd.Parameters.AddWithValue("FORNECEDOR_ID", entidade.Fornecedor.Id);
         }
 
         protected override void DefinirParametros(Medicamento entidade, SqlCommand cmd, int entidadeId)
         {
-            cmd.Parameters.AddWithValue("NOME_MEDICAMENTO", entidade.Nome);
+            cmd.Parameters.AddWithValue("NOME", entidade.Nome);
             cmd.Parameters.AddWithValue("DESCRICAO", entidade.Descricao);
             cmd.Parameters.AddWithValue("LOTE", entidade.Lote);
             cmd.Parameters.AddWithValue("VALIDADE", entidade.Validade);
-            cmd.Parameters.AddWithValue("QTD", entidade.QuantidadeDisponivel);
+            cmd.Parameters.AddWithValue("QUANTIDADEDISPONIVEL", entidade.QuantidadeDisponivel);
             cmd.Parameters.AddWithValue("FORNECEDOR_ID", entidade.Fornecedor.Id);
             cmd.Parameters.AddWithValue("ID", entidade.Id);
         }
@@ -139,10 +190,10 @@ namespace ControleMedicamento.Infra.BancoDados.ModuloMedicamento
             sql = @"UPDATE [TBMEDICAMENTO] SET 
 
                         [NOME] = @NOME,    
-                        [DESCRICAO] @DESCRICAO,
+                        [DESCRICAO] = @DESCRICAO,
                         [LOTE] = @LOTE,
                         [VALIDADE] = @VALIDADE,
-                        [QUANTIDADEDISPONIVEL] = @QTD,
+                        [QUANTIDADEDISPONIVEL] = @QUANTIDADEDISPONIVEL,
                         [FORNECEDOR_ID] = @FORNECEDOR_ID
 
                    WHERE
@@ -194,11 +245,11 @@ namespace ControleMedicamento.Infra.BancoDados.ModuloMedicamento
                            )
                            VALUES
                            (
-                                @NOME_MEDICAMENTO,
+                                @NOME,
                                 @DESCRICAO,
                                 @LOTE,
                                 @VALIDADE,
-                                @QTD,
+                                @QUANTIDADEDISPONIVEL,
                                 @FORNECEDOR_ID
                            )";
 
@@ -206,7 +257,8 @@ namespace ControleMedicamento.Infra.BancoDados.ModuloMedicamento
 
             DefinirParametros(entidade, cmd_Insercao);
 
-            entidade.Id = Convert.ToInt32(cmd_Insercao.ExecuteScalar());
+            cmd_Insercao.ExecuteNonQuery();
+            //entidade.Id = Convert.ToInt32(cmd_Insercao.ExecuteScalar());
 
             DesconectarBancoDados();
         }
@@ -218,11 +270,11 @@ namespace ControleMedicamento.Infra.BancoDados.ModuloMedicamento
             while (leitor.Read())
             {
                 int id = Convert.ToInt32(leitor["ID"]);
-                string nome = leitor["NOME_MEDICAMENTO"].ToString();
+                string nome = leitor["NOME"].ToString();
                 string descricao = leitor["DESCRICAO"].ToString();
                 string lote = leitor["LOTE"].ToString();
                 DateTime validade = Convert.ToDateTime(leitor["VALIDADE"]);
-                int quantidadeDisponivel = Convert.ToInt32(leitor["QTD"]);
+                int quantidadeDisponivel = Convert.ToInt32(leitor["QUANTIDADEDISPONIVEL"]);
                 
                 int fornecedorId = Convert.ToInt32(leitor["FORNECEDOR_ID"]);
 
@@ -250,11 +302,11 @@ namespace ControleMedicamento.Infra.BancoDados.ModuloMedicamento
             if (leitor.Read())
             {
                 int id = Convert.ToInt32(leitor["ID"]);
-                string nome = leitor["NOME_MEDICAMENTO"].ToString();
+                string nome = leitor["NOME"].ToString();
                 string descricao = leitor["DESCRICAO"].ToString();
                 string lote = leitor["LOTE"].ToString();
                 DateTime validade = Convert.ToDateTime(leitor["VALIDADE"]);
-                int quantidadeDisponivel = Convert.ToInt32(leitor["QTD"]);
+                int quantidadeDisponivel = Convert.ToInt32(leitor["QUANTIDADEDISPONIVEL"]);
 
                 int fornecedorId = Convert.ToInt32(leitor["FORNECEDOR_ID"]);
 
@@ -295,6 +347,17 @@ namespace ControleMedicamento.Infra.BancoDados.ModuloMedicamento
             repoFornecedor = new();
 
             return repoFornecedor.SelecionarUnico(numero);
+        }
+
+        private void AdicionarRequisicao(Medicamento med)
+        {
+            foreach (Medicamento m in medicamentos)
+            {
+                if (m.Nome == med.Nome)
+                {
+                    m.Requisicoes.Add(new Requisicao());
+                }
+            }
         }
 
         #endregion

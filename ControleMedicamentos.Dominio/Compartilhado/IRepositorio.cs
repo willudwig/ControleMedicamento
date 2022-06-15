@@ -1,9 +1,8 @@
 ﻿
-using ControleMedicamentos.Dominio;
 using FluentValidation.Results;
 using System.Collections.Generic;
 
-namespace ControleMedicamentos.Infra.BancoDados.Compartilhado
+namespace ControleMedicamentos.Dominio.Compartilhado
 {
     public  interface IRepositorio<T> where T : EntidadeBase<T>
     {
